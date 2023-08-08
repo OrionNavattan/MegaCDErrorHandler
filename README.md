@@ -1,4 +1,4 @@
-#Mega CD Error Handler
+# Mega CD Error Handler
 Experimental modification of version 2.0 of [Vladikcomper's error handler](https://github.com/vladikcomper/md-modules) that adds support for handling exceptions on the Mega CD Sub CPU. Primarily designed for Mode 1, though theoretically it should work in Mode 2 (disc boot) as well with a few changes. 
 
 This handler was developed with the sub CPU BIOS in mind, and as such it assumes that the sub CPU's stack has not been moved, and that it is in the first program RAM bank. Symbol tables should be usable on the main CPU, but there is no support for them on the sub CPU. Some labels in the code have been changed to Hivebrain style-ones (mainly to make it easier for myself to work with the code); equates for all are provided in the code files. Only targets ASM68K for the moment, though an AS version shouldn't be too difficult. Rebasing on Error Handler version 2.5 is planned.
@@ -8,7 +8,7 @@ Source code of the test roms can be found [here].
 
 See the Sonic Retro thread for more information: 
 
-##Installation instructions (steps 4 and beyond will require modifying parts of your program):
+## Installation instructions (steps 4 and beyond will require modifying parts of your program):
 
 1. Include "Debugger Macros and Common Defs.asm" in both the Main and Sub CPU programs.
 2. Include "Mega CD Exception Handler (Main CPU).asm" at the very end of the Main CPU program.
