@@ -1,7 +1,9 @@
 ; ---------------------------------------------------------------
 ; Mega CD Error Handler - Main CPU module
 
-; Original code by Vladikcomper; modified by Orion Navattan
+; ---------------------------------------------------------------
+; Original code by Vladikcomper 2016-2017
+; Modified by Orion Navattan 2023
 
 ; Must be placed at the very end of the ROM for symbol table 
 ; support, but otherwise can be located anywhere in the ROM.
@@ -90,6 +92,8 @@ _yellow 		equ 	1<<13
 _blue			equ 	2<<13
 _blue2			equ 	3<<13
 
+sizeof_dumpedregs:		equ 4*(8+7)	; $3C
+
 vdp_data_port:			equ 	$C00000
 vdp_control_port:		equ 	$C00004
 mcd_reset:				equ		$A12001
@@ -110,7 +114,7 @@ program_ram:			equ 	$420000
 ; ---------------------------------------------------------------
 ; Main CPU handler for sub CPU exceptions. Entered by means of 
 ; one of the trap vectors when it detects that the sub CPU has
-; crashed. (See )
+; crashed.
 
 ; Nearly the same as that used for processing main
 ; CPU exceptions, except it is reading the exception arguments,
@@ -142,21 +146,27 @@ SubCPUError:
 		lea	-sizeof_Console_RAM(sp),sp		; allocate memory for console on main CPU stack
 		jsr	ErrorHandler_SetupVDP(pc)
 		
+		; Initialize console subsystem
 		lea	4(sp),a3
 		jsr	Error_InitConsole(pc)
+		
+		; ----------------
+		; Screen header
+		; ----------------
+		
 		lea	Str_SetErrorScreen(pc),a0
 		jsr	Console_Write(pc)
 		
-		movea.l	(mcd_subcom_0).l,a4	; get sub CPU stack bottom address (the start of the dumped registers)			
-		adda.l	#program_ram,a4	; a4 = main CPU address for bottom of sub CPU stack 
-	
 		move.b	(mcd_mem_mode).l,d3			
 		andi.b	#(~program_ram_bank)&$FF,d3			; set program ram bank to 0
 		move.b	d3,(mcd_mem_mode).l
 		
-		move.l a4,-(sp)	; back up sub CPU stack bottom for later
+		movea.l	(mcd_subcom_0).l,a4	; get sub CPU stack bottom address (the start of the dumped registers)			
+		adda.l	#program_ram,a4	; convert to main CPU address
 		
-		lea $40(a4),a4	; a4 = arguments and exception stack frame ($40 = all registers+usp)
+		move.l a4,-(sp)	; back up sub CPU stack bottom address for later
+		
+		lea sizeof_dumpedregs+4(a4),a4	; a4 = arguments and exception stack frame 
 
 		; Print error description
 		movea.l	(a4)+,a1						; get error text pointer
@@ -176,7 +186,7 @@ SubCPUError:
 		lea	(a1),a3							; a3 may be used to fetch console program address later
 
 		; Print error address (for address error only)
-		btst	#0,d6							; does error has extended stack frame (Address Error only)?
+		btst	#extended_frame_bit,d6							; does error has extended stack frame (Address Error only)?
 		beq.s	.skip1							; if not, branch
 
 		lea	Str_Address(pc),a1					; a1 = formatted string
@@ -190,7 +200,7 @@ SubCPUError:
 		lea	2(a4),a2						; a2 = arguments buffer
 		jsr	Console_WriteLine_Formatted(pc)
 
-		; Print module name error occured in
+		; Print module name error occurred in
 		lea	Str_Module(pc),a1				; a1 = formatted string
 		lea	2(a4),a2						; a2 = arguments buffer
 		jsr	Console_WriteLine_Formatted(pc)
@@ -208,9 +218,8 @@ SubCPUError:
 		jsr	Console_WriteLine_Formatted(pc)
 		jsr	Console_StartNewLine(pc)
 		addq.w	#4,sp							; free argument
-
-		
-		movea.l (sp)+,a4							; restore sub stack bottom address
+	
+		movea.l (sp)+,a4							; restore sub CPU stack bottom address
 		lea	4(a4),a2						; use register buffer as arguments
 
 		; Print data registers
@@ -233,9 +242,9 @@ SubCPUError:
 		; Special case : stack pointer (SP)
 		move.w	#'sp',d0
 		moveq	#0,d5					; number of registers - 1			
-		lea	$40(a4),a2		; a2 = top of stack frame
+		lea	sizeof_dumpedregs(a4),a2		; a2 = top of stack frame
 		move.l	a2,d4	
-		andi.l	#$FFFF,d4		; convert to sub CPU address	
+		sub.l	#program_ram,d4		; convert to sub CPU address	
 		move.l	d4,-(sp)		
 		lea	(sp),a2						; a2 = pointer to where address of frame bottom is written
 		
@@ -243,7 +252,7 @@ SubCPUError:
 		addq.w	#4,sp
 
 		; Display USP and SR (if requested)
-		btst	#1,d6
+		btst	#show_sr_usp_bit,d6
 		beq.s	.skip2
 		
    		; Draw 'USP'
@@ -253,7 +262,7 @@ SubCPUError:
 
 		; Draw 'SR'
 		lea	Str_SR(pc),a1
-		lea	$44(a4),a2					; a2 = top of exception frame
+		lea	sizeof_dumpedregs+4+4(a4),a2					; a2 = top of exception frame
 		btst	#0,d6							; does error has extended stack frame (Address Error only)?
 		beq.s	.notaddrerr							; if not, branch	
 		addq.w	#8,a2					; skip extended frame
@@ -277,9 +286,9 @@ SubCPUError:
 		adda.l	#program_ram,a1				; make into main CPU address
 		
 	
-		lea	$44(a4),a2							; a2 = top of exception frame
+		lea	sizeof_dumpedregs+4+4(a4),a2							; a2 = top of exception frame
 		;subq.l	#1,a1							; unnecessary here as sub CPU stack top can never be zero if BIOS is used
-		btst	#0,d6							; does error has extended stack frame (Address Error only)?
+		btst	#extended_frame_bit,d6							; does error has extended stack frame (Address Error only)?
 		beq.s	.notaddrerr2							; if not, branch	
 		addq.w	#8,a2					; skip extended frame
 	
@@ -340,21 +349,20 @@ ErrorHandler:
 		; Halt the sub CPU.
 	.waitsubbus:	
 		bset	#sub_bus_request_bit,(mcd_reset).l			; request the sub CPU bus
-		beq.s	.waitsubbus					; if it has not been granted, wait		
-
+	
 		; Beyond here is unmodified from original.
 				
 		lea	-sizeof_Console_RAM(sp),sp		; allocate memory for console on stack
 		movem.l	d0-a6,-(sp) 							; dump all registers
 
 		jsr	ErrorHandler_SetupVDP(pc)
-		lea	$3C+sizeof_Console_RAM(sp),a4		; a4 = arguments and exception stack frame
+		lea	sizeof_dumpedregs+sizeof_Console_RAM(sp),a4		; a4 = arguments and exception stack frame
 
 		move.l	usp,a0
 		move.l	a0,-(sp)								; save USP if needed to display later (as it's overwritten by the console subsystem)
 
 		; Initialize console subsystem
-		lea	$3C+4(sp),a3					; a3 = Console RAM
+		lea	sizeof_dumpedregs+4(sp),a3					; a3 = Console RAM
 		jsr	Error_InitConsole(pc)
 
 		; ----------------
@@ -1135,9 +1143,6 @@ DecodeSymbol:
 
 ; ===============================================================
 ; ---------------------------------------------------------------
-; Error handling and debugging modules
-; 2016-2017, Vladikcomper
-; ---------------------------------------------------------------
 ; String formatters : Hexidecimal number
 ; ---------------------------------------------------------------
 ; INPUT:
@@ -1227,9 +1232,6 @@ HexDigitToChar:
 
 ; ===============================================================
 ; ---------------------------------------------------------------
-; Error handling and debugging modules
-; 2016-2017, Vladikcomper
-; ---------------------------------------------------------------
 ; String formatters : Binary number
 ; ---------------------------------------------------------------
 ; INPUT:
@@ -1310,9 +1312,6 @@ FormatBin_Return:
 
 
 ; ===============================================================
-; ---------------------------------------------------------------
-; Error handling and debugging modules
-; 2016-2017, Vladikcomper
 ; ---------------------------------------------------------------
 ; String formatters : Decimal number
 ; ---------------------------------------------------------------
@@ -1450,9 +1449,6 @@ DecimalBase_Byte:
 
 
 ; ===============================================================
-; ---------------------------------------------------------------
-; Error handling and debugging modules
-; 2016-2017, Vladikcomper
 ; ---------------------------------------------------------------
 ; String formatters : Symbols
 ; ---------------------------------------------------------------
@@ -2219,9 +2215,6 @@ Console_Write_Formatted: __global
 
 ; ===============================================================
 ; ---------------------------------------------------------------
-; Error handling and debugging modules
-; 2016-2017, Vladikcomper
-; ---------------------------------------------------------------
 ; Fast 1bpp decompressor
 ; ---------------------------------------------------------------
 ; INPUT:
@@ -2235,20 +2228,20 @@ Console_Write_Formatted: __global
 ; ---------------------------------------------------------------
 
 Decomp1bpp:	__global
-		moveq	#$1E, d2
+		moveq	#$1E,d2
 
-		.row:
-			move.b	(a0)+, d0				; d0 = %aaaa bbbb
-			move.b	d0, d1
-			lsr.b	#3, d1					; d1 = %000a aaab
-			and.w	d2, d1					; d1 = %000a aaa0
-			move.w	(a1,d1), (a6)			; decompress first nibble
+	.row:
+		move.b	(a0)+,d0				; d0 = %aaaa bbbb
+		move.b	d0,d1
+		lsr.b	#3,d1					; d1 = %000a aaab
+		and.w	d2,d1					; d1 = %000a aaa0
+		move.w	(a1,d1),(a6)			; decompress first nibble
 		
-			add.b	d0, d0					; d0 = %aaab bbb0
-			and.w	d2, d0					; d0 = %000b bbb0
-			move.w	(a1,d0), (a6)			; decompress second nibble
+		add.b	d0,d0					; d0 = %aaab bbb0
+		and.w	d2,d0					; d0 = %000b bbb0
+		move.w	(a1,d0),(a6)			; decompress second nibble
 			
-			dbf		d4, .row
+		dbf		d4,.row
 
 		rts
 
