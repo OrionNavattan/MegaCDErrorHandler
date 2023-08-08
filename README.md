@@ -4,9 +4,9 @@ Experimental modification of version 2.0 of [Vladikcomper's error handler](https
 This handler was developed with the sub CPU BIOS in mind, and as such it assumes that the sub CPU's stack has not been moved, and that it is in the first program RAM bank. Symbol tables should be usable on the main CPU, but there is no support for them on the sub CPU. Some labels in the code have been changed to Hivebrain style-ones (mainly to make it easier for myself to work with the code); equates for all are provided in the code files. Only targets ASM68K for the moment, though an AS version shouldn't be too difficult. Rebasing on Error Handler version 2.5 is planned.
 
 Tested and confirmed working on real hardware (North American Model 1 VA2 + North American Sony Model 2) and Blastem. Also works in Genesis Plus GX, but be warned that sub CPU odd address reads are NOT handled correctly by that emulator (it allows them to complete successfully, rather than trigger an exception).
-Source code of the test roms can be found [here].
+Source code of the test roms can be found [here](https://github.com/OrionNavattan/Mega-CD-Error-Handler-Test).
 
-See the Sonic Retro thread for more information: 
+See the Sonic Retro thread for more information: https://forums.sonicretro.org/index.php?threads/experimental-mega-cd-error-handler-plus-other-mode-1-tools.41922/
 
 ## Installation instructions (steps 4 and beyond will require modifying parts of your program):
 
