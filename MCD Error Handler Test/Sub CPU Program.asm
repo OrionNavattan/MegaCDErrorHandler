@@ -9,7 +9,7 @@
 		include "Mega CD Sub CPU.asm"
 		include "Common Macros.asm"
 		
-		ErrorType: equ 2	; 0 = no error, 1 = address error, 2 = illegal instruction
+		ErrorType: equ 0	; 0 = no error, 1 = address error, 2 = illegal instruction
 			
 		org	sp_start
 		
