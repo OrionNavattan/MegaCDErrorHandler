@@ -14,5 +14,5 @@ See the Sonic Retro thread for more information: https://forums.sonicretro.org/i
 2. Include "Mega CD Exception Handler (Main CPU).asm" at the very end of the Main CPU program.
 3. Include "Mega CD Exception Handler (Sub CPU).asm" within the first $1A000 bytes of your sub CPU program (that is, in the first program RAM bank).
 4. Modify your sub CPU program's init routine to set up the exception vectors. SP Init Example.asm contains an example of how this can be done.
-5. Set one of the user traps (0 by default) in the vector table to point to SubCPUError.
+5. Set one of the user traps (0 by default) in the vector table to point to SubCPUError, and another to point to SubCPUTimeout (1 by default).
 6. Ensure your interprocessor communication has some means for the sub CPU to inform the main CPU that it has crashed. The system used in the code here is a sample, and can be customized if necessary.

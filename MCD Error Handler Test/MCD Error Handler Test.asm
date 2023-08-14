@@ -58,7 +58,8 @@ Vectors:
 		dc.l VBlank					; IRQ level 6 (vertical retrace interrupt)
 		dc.l ErrorExcept					; IRQ level 7
 		dc.l SubCPUError
-		dcb.l 15,ErrorExcept				; TRAP #01..#15 exceptions
+		dc.l SubCPUTimeout					; 	; Trap 1
+		dcb.l 14,ErrorExcept				; TRAP #02..#15 exceptions
 		dcb.l 16,ErrorExcept				; Unused (reserved)
 Header:
 		dc.b "SEGA GENESIS    "		; Hardware system ID (Console name)
