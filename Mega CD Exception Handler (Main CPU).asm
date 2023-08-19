@@ -141,14 +141,10 @@ SubCPUError:
 		tst.b	(mcd_sub_flag).l	; is the sub CPU done?
 		bne.s	.waitsub			; if not, branch	
 		
-		move.w	#$100-1,d0	; maximum time to wait for response
 	.waitsubbus:	
 		bset	#sub_bus_request_bit,(mcd_reset).l			; request the sub CPU bus
-		bne.s	.granted									; branch if it has been granted
-		dbeq	d0,.waitsubbus							; if it has not been granted, wait
-		trap #1							; if we've timed out				
+		beq.s	.waitsubbus									; branch if it has been granted
 		
-	.granted:	
 		lea	-sizeof_Console_RAM(sp),sp		; allocate memory for console on main CPU stack
 		jsr	ErrorHandler_SetupVDP(pc)
 		
