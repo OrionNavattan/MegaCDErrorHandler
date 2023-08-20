@@ -5,12 +5,13 @@
 		opt w+					; print warnings
 		opt m+					; do not expand macros - if enabled, this can break assembling
 		
+		ErrorType: equ 0	; 0 = no error, 1 = address error, 2 = illegal instruction
+		
 		include "Debugger Macros and Common Defs.asm"
 		include "Mega CD Sub CPU.asm"
 		include "Common Macros.asm"
 		
-		ErrorType: equ 0	; 0 = no error, 1 = address error, 2 = illegal instruction
-			
+
 		org	sp_start
 		
 SubPrgHeader:	index.l *
@@ -47,8 +48,7 @@ Init:
 		dc.l PrivilegeViol
 		dc.l Trace
 		dc.l Line1010Emu
-		dc.l Line1111Emu
-		dc.l ErrorExcept		
+		dc.l Line1111Emu		
 		
 Main:
 		addq.w #4,sp	; throw away return address to BIOS code, as we will not be returning there
@@ -58,7 +58,7 @@ Main:
 	elseif 	ErrorType=2
 		illegal
 	endc	
-			
+	
 		move.b	#'R',(mcd_subcom_0).w	; signal success
 		bra.s	*
 		

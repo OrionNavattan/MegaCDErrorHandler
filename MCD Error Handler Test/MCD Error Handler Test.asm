@@ -3,14 +3,16 @@
 		opt ae-					; automatic evens are disabled by default
 		opt ws+					; allow statements to contain white-spaces
 		opt w+					; print warnings
+	
+		ErrorType: equ 0	; 0 = no error, 1 = address error, 2 = illegal instruction
+				
+		MainCPU: equ 1 ; enable some debugging features for Main CPU only
 		
 		include "Debugger Macros and Common Defs.asm"
 		include "Mega CD Main CPU (Mode 1).asm"
 		include "Common Macros.asm"		
 		
-		
-		ErrorType: equ 0	; 0 = no error, 1 = address error, 2 = illegal instruction
-		
+	
 workram:		equ $FF0000	
 
 stack_pointer:		equ $FFFFFFFE
@@ -57,7 +59,7 @@ Vectors:
 		dc.l ErrorExcept					; IRQ level 5
 		dc.l VBlank					; IRQ level 6 (vertical retrace interrupt)
 		dc.l ErrorExcept					; IRQ level 7
-		dc.l SubCPUError
+		dc.l SubCPUError						; Trap 0
 		dc.l SubCPUTimeout					; 	; Trap 1
 		dcb.l 14,ErrorExcept				; TRAP #02..#15 exceptions
 		dcb.l 16,ErrorExcept				; Unused (reserved)
