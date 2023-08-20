@@ -116,8 +116,6 @@ disable_ints: macros
 ; ---------------------------------------------------------------
 
 assert	macro	src, cond, dest
-	; Assertions only work in DEBUG builds
-;	if def(__DEBUG__)
 	if narg=3
 		cmp.\0	\dest, \src
 	else narg=2
@@ -126,7 +124,6 @@ assert	macro	src, cond, dest
 		b\cond\.s	@skip\@
 		RaiseError	"Assertion failed:%<endl>\src \cond \dest"
 	@skip\@:
-;	endc
 	endm
 
 ; ---------------------------------------------------------------
@@ -262,7 +259,6 @@ Console &
 KDebug &
 	macro
 
-;	if def(__DEBUG__)	; KDebug interface is only available in DEBUG builds
 	if strcmp("\0","write")|strcmp("\0","writeline")|strcmp("\0","Write")|strcmp("\0","WriteLine")
 		move.w	sr, -(sp)
 		__FSTRING_GenerateArgumentsCode \1
@@ -309,7 +305,6 @@ KDebug &
 		inform	2,"""\0"" isn't a member of ""KDebug"""
 
 	endc
-;	endc
 	endm
 
 ; ---------------------------------------------------------------
