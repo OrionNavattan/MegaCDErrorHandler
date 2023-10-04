@@ -5,3 +5,9 @@ MCD Error Handler Test/Sub CPU Program.bin
 MCD Error Handler Test/Sub CPU Program.sym
 MCD Error Handler Test/errors1.txt
 MCD Error Handler Test/errors2.txt
+asm68k.exe
+build.bat
+Error Handler Bundle.asm
+Error Handler Bundle.bin
+Error Handler Bundle.sym
+Error Handler Bundle Original.bin
