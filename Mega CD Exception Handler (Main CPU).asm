@@ -9,7 +9,7 @@
 ; Original code by Vladikcomper 2016-2023
 ; Modified by Orion Navattan 2023
 
-; Must be placed at the very end of the ROM for symbol table 
+; Must be placed at the very end of the ROM for symbol table
 ; support, but otherwise can be located anywhere in the ROM.
 ; ----------------------------------------------------------------------------
 ; Exception entry points
@@ -49,7 +49,7 @@ ErrorExcept:
 	__ErrorMessage "MAIN CPU: ERROR EXCEPTION", _eh_show_sr_usp
 
 SubCPUTimeout:
-	__ErrorMessage "MAIN CPU: TIMED OUT WAITING FOR SUB CPU", _eh_show_sr_usp	
+	__ErrorMessage "MAIN CPU: TIMED OUT WAITING FOR SUB CPU", _eh_show_sr_usp
 
 ; ============================================================================
 ; ----------------------------------------------------------------------------
@@ -58,10 +58,10 @@ SubCPUTimeout:
 
 ; ----------------------------------------------------------------------------
 ; Sign-extend a value and use it with moveq
-; Replicates the signextendB function in Sonic 2 AS; required to prevent the 
+; Replicates the signextendB function in Sonic 2 AS; required to prevent the
 ; assembler from generating a sign-extension warning.
 ; ----------------------------------------------------------------------------
- 
+
 	if ~def(moveq_)
 moveq_:		macro
  		moveq	#(\1\+-((-(\1\&(1<<(8-1))))&(1<<(8-1))))!-((-(\1\&(1<<(8-1))))&(1<<(8-1))),\2
@@ -71,13 +71,13 @@ moveq_:		macro
 ; ----------------------------------------------------------------------------
 ; Save and restore registers from the stack.
 ; ----------------------------------------------------------------------------
-	
+
 	if ~def(chkifreg)
 chkifreg:	macro
 		isreg: = 1					; assume string is register
 		isregm: = 0					; assume single register
 		regtmp: equs \1					; copy input
-		
+
 	rept strlen(\1)
 		regchr:	substr ,1,"\regtmp"			; get first character
 		regtmp:	substr 2,,"\regtmp"			; remove first character
@@ -127,13 +127,13 @@ popr:		macro
 		move.l	(sp)+,\1				; restore one whole register
 		endc
 	endc
-	endm		
+	endm
 	endc
-	
+
 ; --------------------------------------------------------------------------
-; Make a 68K instruction or dc constant with a VDP command longword or word 
+; Make a 68K instruction or dc constant with a VDP command longword or word
 ; as the source. ore or less replicates the vdpComm function in Sonic 2 AS.
-; input: 68k instruction mnemonic, destination offset, destination 
+; input: 68k instruction mnemonic, destination offset, destination
 ; (vram/vsram/cram), operation (read/write/dma), destination of 68K instruction,
 ; additional adjustment to command longword (shifts, ANDs)
 ; --------------------------------------------------------------------------
@@ -142,7 +142,7 @@ popr:		macro
 vdp_comm:	macro inst,addr,cmdtarget,cmd,dest,adjustment
 
 		local type,rwd,command
-	
+
 		if stricmp ("\cmdtarget","vram")
 		type: =	$21					; %10 0001
 		elseif stricmp ("\cmdtarget","cram")
@@ -151,7 +151,7 @@ vdp_comm:	macro inst,addr,cmdtarget,cmd,dest,adjustment
 		type: = $25					; %10 0101
 		else inform 2,"Invalid VDP command destination (must be vram, cram, or vsram)."
 		endc
-	
+
 		if stricmp ("\cmd","read")
 		rwd: =	$C					; %00 1100
 		elseif stricmp ("\cmd","write")
@@ -160,20 +160,31 @@ vdp_comm:	macro inst,addr,cmdtarget,cmd,dest,adjustment
 		rwd: = $27					; %10 0111
 		else inform 2,"Invalid VDP command type (must be read, write, or dma)."
 		endc
-		
+
 		if stricmp ("\0","w")
 		command: = (((type&rwd)&3)<<30)|((addr&$3FFF)<<16)|(((type&rwd)&$FC)<<2)|((addr&$C000)>>14)&$FFFF ; AND to word-length
 		else
 		command: = (((type&rwd)&3)<<30)|((addr&$3FFF)<<16)|(((type&rwd)&$FC)<<2)|((addr&$C000)>>14)
 		endc
-		
-		if strlen("\dest")>0		
+
+		if strlen("\dest")>0
 			\inst\.\0	#command\adjustment\,\dest
-		else	
-			\inst\.\0	command\adjustment\	
+		else
+			\inst\.\0	command\adjustment\
 		endc
 		endm
-	endc			
+	endc
+
+; ---------------------------------------------------------------------------
+; Make a size constant for an array.
+; input: array start label
+; ---------------------------------------------------------------------------
+
+	if ~def(arraysize)
+arraysize:	macro
+		sizeof_\1: equ	*-\1\
+		endm
+	endc
 
 ; ----------------------------------------------------------------------------
 ; Constants
@@ -223,7 +234,7 @@ vdp_enable_hint:	equ vdp_mode_register1+$10	; enable horizontal interrupts
 vdp_md_color:		equ vdp_mode_register1+4	; Mega Drive colour mode
 vdp_freeze_hvcounter:	equ vdp_mode_register1+2	; freeze H/V counter on interrupts
 vdp_disable_display:	equ vdp_mode_register1+1
-	
+
 vdp_mode_register2:	equ $8100
 vdp_128kb_vram:		equ vdp_mode_register2+$80	; use 128kB of VRAM, Teradrive only
 vdp_enable_display:	equ vdp_mode_register2+$40	; if not set, display is filled with background color
@@ -232,7 +243,7 @@ vdp_enable_dma:		equ vdp_mode_register2+$10	; enable DMA operations
 vdp_pal_display:	equ vdp_mode_register2+8	; 240px screen height (PAL)
 vdp_ntsc_display:	equ vdp_mode_register2		; 224px screen height (NTSC)
 vdp_md_display:		equ vdp_mode_register2+4	; mode 5 Mega Drive display
-	
+
 vdp_fg_nametable:	equ $8200			; fg (plane A) nametable setting
 vdp_window_nametable:	equ $8300			; window nametable setting
 vdp_bg_nametable:	equ $8400			; bg (plane B) nametable setting
@@ -242,7 +253,7 @@ vdp_bg_color:		equ $8700			; bg colour id (+0..$3F)
 vdp_sms_hscroll:	equ $8800
 vdp_sms_vscroll:	equ $8900
 vdp_hint_counter:	equ $8A00			; number of lines between horizontal interrupts
-	
+
 vdp_mode_register3:	equ $8B00
 vdp_enable_xint:	equ vdp_mode_register3+8	; enable external interrupts
 vdp_16px_vscroll:	equ vdp_mode_register3+4	; 16px column vertical scroll mode
@@ -250,18 +261,18 @@ vdp_full_vscroll:	equ vdp_mode_register3		; full screen vertical scroll mode
 vdp_1px_hscroll:	equ vdp_mode_register3+3	; 1px row horizontal scroll mode
 vdp_8px_hscroll:	equ vdp_mode_register3+2	; 8px row horizontal scroll mode
 vdp_full_hscroll:	equ vdp_mode_register3		; full screen horizontal scroll mode
-	
+
 vdp_mode_register4:	equ $8C00
 vdp_320px_screen_width:	equ vdp_mode_register4+$81	; 320px wide screen mode
 vdp_256px_screen_width:	equ vdp_mode_register4		; 256px wide screen mode
 vdp_shadow_highlight:	equ vdp_mode_register4+8	; enable shadow/highlight mode
 vdp_interlace:		equ vdp_mode_register4+2	; enable interlace mode
 vdp_interlace_x2:	equ vdp_mode_register4+6	; enable double height interlace mode (e.g. Sonic 2 two player game)
-	
+
 vdp_hscroll_table:	equ $8D00			; horizontal scroll table setting
 vdp_nametable_hi:	equ $8E00			; high bits of fg/bg nametable settings for 128kB VRAM
 vdp_auto_inc:		equ $8F00			; value added to VDP address after each write
-	
+
 vdp_plane_size:		equ $9000			; fg/bg plane dimensions
 vdp_plane_height_128:	equ vdp_plane_size+$30		; height = 128 cells (1024px)
 vdp_plane_height_64:	equ vdp_plane_size+$10		; height = 64 cells (512px)
@@ -269,15 +280,15 @@ vdp_plane_height_32:	equ vdp_plane_size		; height = 32 cells (256px)
 vdp_plane_width_128:	equ vdp_plane_size+3		; width = 128 cells (1024px)
 vdp_plane_width_64:	equ vdp_plane_size+1		; width = 64 cells (512px)
 vdp_plane_width_32:	equ vdp_plane_size		; width = 32 cells (256px)
-	
+
 vdp_window_x_pos:	equ $9100
 vdp_window_right:	equ vdp_window_x_pos+$80	; draw window from x pos to right edge of screen
 vdp_window_left:	equ vdp_window_x_pos		; draw window from x pos to left edge of screen
-	
+
 vdp_window_y_pos:	equ $9200
 vdp_window_bottom:	equ vdp_window_y_pos+$80	; draw window from y pos to bottom edge of screen
 vdp_window_top:		equ vdp_window_y_pos		; draw window from y pos to top edge of screen
-	
+
 vdp_dma_length_low:	equ $9300
 vdp_dma_length_hi:	equ $9400
 vdp_dma_source_low:	equ $9500
@@ -286,10 +297,10 @@ vdp_dma_source_hi:	equ $9700
 vdp_dma_68k_copy:	equ vdp_dma_source_hi		; DMA 68k to VRAM copy mode
 vdp_dma_vram_fill:	equ vdp_dma_source_hi+$80	; DMA VRAM fill mode
 vdp_dma_vram_copy:	equ vdp_dma_source_hi+$C0	; DMA VRAM to VRAM copy mode
-	
+
 ; --------------------------------------------------------------------------
 ; VDP colors
-; --------------------------------------------------------------------------	
+; --------------------------------------------------------------------------
 
 cWhite:	equ $EEE
 cBlack:	equ 0
@@ -335,6 +346,9 @@ sizeof_Console_RAM:		equ		__rs
 
 _ConsoleMagic:	equ	$5D	; magic value stored in Console_Magic
 
+
+_ValidHeader: 	equ $DEB2 ; magic value used to verify presence of symbol table
+
 ; ----------------------------------------------------------------------------
 ; Instruction opcodes
 ; ----------------------------------------------------------------------------
@@ -344,16 +358,16 @@ ins_jsr:	equ $4E	; high byte of opcode for jsr
 	addr_reg_indir:	equ $90 ; low byte of jsr address register indirect
 	abs_long:		equ $B9	; low byte of jsr absolute long
 ins_jmp_abs_long:	equ $4EF9
-
+ins_jmp_abs_short:	equ $4EF8
 
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Address registers debugger
 ; ---------------------------------------------------------------------------
-	
+
 	if DebuggerExtensions
 
-Debugger_AddressRegisters:	
+Debugger_AddressRegisters:
 		pushr.l	a0-a6						; dump registers
 
 		; Setup screen header (position and "Address Registers:" text)
@@ -370,7 +384,7 @@ Debugger_AddressRegisters:
 	.loop:
 		lea	(sp),a0							; a0 = label
 		move.l	(a4)+,d1							; d1 = address register value
-		
+
 		jsr	Error_DrawOffsetLocation(pc)
 
 		addq.b	#1,2(sp)							; add 1 to register's digit ASCII
@@ -389,7 +403,7 @@ Str_AddrScreenHeader:
 ; Backtrace debugger
 ; ----------------------------------------------------------------------------
 
-Debugger_Backtrace:	
+Debugger_Backtrace:
 		; Setup screen header (position and "Backtrace:" text)
 		lea	Str_BacktrceScreenHeader(pc),a0
 		jsr	Console_Write(pc)
@@ -502,7 +516,7 @@ Str_BacktrceScreenHeader:
 ; Enters a console program specified after the subroutine call
 ; ----------------------------------------------------------------------------
 
-ErrorHandler_ConsoleOnly:	
+ErrorHandler_ConsoleOnly:
 		disable_ints
 		lea	-sizeof_Console_RAM(sp),sp		; allocate memory for console
 		pushr.l	d0-a6
@@ -518,7 +532,7 @@ ErrorHandler_ConsoleOnly:
 ; Clears currently used console
 ; ----------------------------------------------------------------------------
 
-ErrorHandler_ClearConsole:	
+ErrorHandler_ClearConsole:
 		pushr.l	a3
 		move.l	usp,a3
 		cmpi.b	#_ConsoleMagic,Console_Magic(a3)
@@ -545,10 +559,10 @@ ErrorHandler_ClearConsole:
 ; 	uses d7.l, a0, a1, a2
 ; ----------------------------------------------------------------------------
 
-KDebug_WriteLine_Formatted: 
+KDebug_WriteLine_Formatted:
 		pea		KDebug_FlushLine(pc)
 
-KDebug_Write_Formatted: 
+KDebug_Write_Formatted:
 
 sizeof_stringbuffer = $10
 
@@ -564,7 +578,7 @@ sizeof_stringbuffer = $10
 
 		jsr	FormatString(pc)
 		lea	sizeof_stringbuffer(sp),sp		; free string buffer
-		
+
 		popr.l	a4
 
 	.quit:
@@ -583,7 +597,7 @@ sizeof_stringbuffer = $10
 ;	carry	0 = continue operation
 ;			1 = terminate FormatString with error condition
 
-; WARNING: This function shouldn't modify d0-d4 / a1-a3!
+; WARNING: This function can only modify a0 / d7 !
 ; ----------------------------------------------------------------------------
 
 KDebug_FlushBuffer:
@@ -623,14 +637,14 @@ KDebug_FlushBuffer:
 ; Finishes the current line and flushes KDebug message buffer
 ; ----------------------------------------------------------------------------
 
-KDebug_FlushLine:	
+KDebug_FlushLine:
 		pushr.l	a0
 		move.l	usp,a0
 		cmpi.b	#_ConsoleMagic,Console_Magic(a0)	; are we running console?
 		beq.s	.quit						; if yes, disable KDebug output, because it breaks VDP address
 
 		move.w	#$9E00,(vdp_control_port).l			; send null-terminator
-		
+
 	.quit:
 		popr.l	a0
 		rts
@@ -639,7 +653,7 @@ KDebug_FlushLine:
 ; Pause console program executions until A/B/C are pressed
 ; ----------------------------------------------------------------------------
 
-ErrorHandler_PauseConsole:	
+ErrorHandler_PauseConsole:
 		pushr.l	d0-d1/a0-a1/a3
 		move.l	usp,a3
 		cmpi.b	#_ConsoleMagic,Console_Magic(a3)
@@ -647,7 +661,7 @@ ErrorHandler_PauseConsole:
 
 		pushr.w	#0					; allocate joypad memory
 		bsr.s	Joypad_Wait_ABCStart		; extra call to initialize joypad bitfield and avoid misdetecting pressed buttons
-		
+
 	.loop:
 		bsr.s	Joypad_Wait_ABCStart		; is A/B/C pressed?
 		beq.s	.loop						; if not, branch
@@ -683,7 +697,7 @@ Joypad_Wait_ABCStart:
 ; A simple controller that allows switching between debuggers
 ; ----------------------------------------------------------------------------
 
-ErrorHandler_PagesController:	
+ErrorHandler_PagesController:
 		pushr.l	d0-a6				; back up all the registers ...
 		pushr.w	#0					; allocate joypad memory
 		bsr.s	Joypad_Wait_ABCStart		; extra call to initialize joypad bitfield and avoid misdetecting pressed buttons
@@ -740,7 +754,7 @@ ErrorHandler_PagesController:
 ; Performs VSync
 ; ----------------------------------------------------------------------------
 
-VSync:	
+VSync:
 		lea	(vdp_control_port).l,a0
 
 	.loop0:
@@ -781,24 +795,24 @@ ReadJoypad:
 ; Debugger extensions table
 ; ----------------------------------------------------------------------------
 
-ErrorHandler_ExtraDebuggerList:	
+ErrorHandler_ExtraDebuggerList:
 		dc.l	Debugger_AddressRegisters	; for button A
 		dc.l	0	; for button C (not B)
-		dc.l	Debugger_Backtrace	; for button B (not C)	
+		dc.l	Debugger_Backtrace	; for button B (not C)
 
 	endc ; DebuggerExtensions
-		
+
 ; ----------------------------------------------------------------------------
-; Main CPU handler for sub CPU exceptions. Entered by means of one of the trap 
+; Main CPU handler for sub CPU exceptions. Entered by means of one of the trap
 ; vectors when it detects that the sub CPU has crashed.
 
-; Nearly the same as that used for processing main CPU exceptions, except it 
-; is reading the exception arguments, register dump and stack frame from the 
+; Nearly the same as that used for processing main CPU exceptions, except it
+; is reading the exception arguments, register dump and stack frame from the
 ; sub CPU's stack.
 
-; This assumes that the initial stack set by the BIOS is still being used, and 
-; that the stack is in the first program RAM bank (which it is by default). 
-; Both Mode 1 and Mode 2 should be supported; the only change being the value 
+; This assumes that the initial stack set by the BIOS is still being used, and
+; that the stack is in the first program RAM bank (which it is by default).
+; Both Mode 1 and Mode 2 should be supported; the only change being the value
 ; of 'program_ram'.
 
 ; GLOBAL REGISTERS:
@@ -806,43 +820,43 @@ ErrorHandler_ExtraDebuggerList:
 ;		a3	= pointer to additional parameters
 ;		a4	= bottom of sub CPU stack (after exception frame)
 ; ----------------------------------------------------------------------------
-	
+
 SubCPUError:
 		disable_ints				; disable interrupts
 		move.b	(mcd_sub_flag).l,(mcd_main_flag).l	; let sub CPU know we've noticed
 
 	.waitsub:
 		tst.b	(mcd_sub_flag).l	; is the sub CPU done?
-		bne.s	.waitsub			; if not, branch	
-		
-	.waitsubbus:	
+		bne.s	.waitsub			; if not, branch
+
+	.waitsubbus:
 		bset	#sub_bus_request_bit,(mcd_reset).l			; request the sub CPU bus
 		beq.s	.waitsubbus									; branch if it has been granted
-		
+
 		lea	-sizeof_Console_RAM(sp),sp		; allocate memory for console on main CPU stack
 		jsr	ErrorHandler_SetupVDP(pc)
-		
+
 		; Initialize console subsystem
 		lea	4(sp),a3
 		jsr	Error_InitConsole(pc)
-		
+
 		; ----------------
 		; Screen header
 		; ----------------
-		
+
 		lea	Str_SetErrorScreen(pc),a0
 		jsr	Console_Write(pc)
-		
-		move.b	(mcd_mem_mode).l,d3			
+
+		move.b	(mcd_mem_mode).l,d3
 		andi.b	#(~program_ram_bank)&$FF,d3			; set program ram bank to 0
 		move.b	d3,(mcd_mem_mode).l
-		
-		movea.l	(mcd_subcom_0).l,a4	; get sub CPU stack bottom address (the start of the dumped registers)			
+
+		movea.l	(mcd_subcom_0).l,a4	; get sub CPU stack bottom address (the start of the dumped registers)
 		adda.l	#program_ram,a4	; convert to main CPU address
-		
+
 		pushr.l a4	; back up sub CPU stack bottom address for later
-		
-		lea sizeof_dumpedregs+4(a4),a4	; a4 = arguments and exception stack frame 
+
+		lea sizeof_dumpedregs+4(a4),a4	; a4 = arguments and exception stack frame
 
 		; Print error description
 		movea.l	(a4)+,a1						; get error text
@@ -858,7 +872,7 @@ SubCPUError:
 		bpl.s	.align_ok						; if "_eh_align_offset" is not set, branch
 		addq.w	#1,a1							; skip a byte to avoid address error on reading the next word
 
-	.align_ok:		
+	.align_ok:
 		lea	(a1),a3							; a3 may be used to fetch console program address later
 
 		; Print error address (for Address error only)
@@ -868,9 +882,9 @@ SubCPUError:
 		lea Str_Address(pc),a0				; a0 = label string
 		move.l	2(a4),d1						; d1 = address error offset
 		jsr	Error_DrawOffsetLocation(pc)
-		addq.w	#8,a4							; skip extension part of the stack frame				
-		
-	.skip1:	
+		addq.w	#8,a4							; skip extension part of the stack frame
+
+	.skip1:
 		; Print exception offset
 		lea Str_Offset(pc),a0				; a0 = label string
 		move.l	2(a4),d1						; d1 = last return offset
@@ -878,7 +892,7 @@ SubCPUError:
 
 		; Print caller
 		movea.l	(program_ram).l,a1			; a1 = sub CPU initial stack pointer value
-		adda.l	#program_ram,a1				; convert to main CPU address		
+		adda.l	#program_ram,a1				; convert to main CPU address
 		lea	6(a4),a2						; a2 = call stack (after exception stack frame)
 		jsr	Error_GuessCaller(pc)			; d1 = caller
 		lea Str_Caller(pc),a0				; a0 = label string
@@ -888,7 +902,7 @@ SubCPUError:
 		; ----------------
 		; Registers
 		; ----------------
-	
+
 		popr.l a4							; restore sub CPU stack bottom address
 		lea	4(a4),a2						; use register buffer as arguments
 
@@ -911,11 +925,11 @@ SubCPUError:
 
 		; Special case : stack pointer (SP)
 		move.w	#'sp',d0
-		moveq	#0,d5					; number of registers - 1			
+		moveq	#0,d5					; number of registers - 1
 		lea	sizeof_dumpedregs(a4),a2		; a2 = top of stack frame
-		move.l	a2,d4	
-		subi.l	#program_ram,d4		; convert to sub CPU address	
-		move.l	d4,-(sp)		
+		move.l	a2,d4
+		subi.l	#program_ram,d4		; convert to sub CPU address
+		move.l	d4,-(sp)
 		lea	(sp),a2						; a2 = pointer to where address of frame bottom is written
 		jsr	Error_DrawRegisters(pc)
 		addq.w	#4,sp
@@ -923,7 +937,7 @@ SubCPUError:
 		; Display USP and SR (if requested)
 		btst	#show_sr_usp_bit,d6
 		beq.s	.skip2
-		
+
    		; Draw 'USP'
 		lea	Str_USP(pc),a1
 		lea	(a4),a2						; a2 = USP dumped by sub CPU
@@ -933,10 +947,10 @@ SubCPUError:
 		lea	Str_SR(pc),a1
 		lea	sizeof_dumpedregs+4+4(a4),a2					; a2 = top of exception frame
 		btst	#extended_frame_bit,d6							; does error has extended stack frame (Address Error only)?
-		beq.s	.notaddrerr							; if not, branch	
+		beq.s	.notaddrerr							; if not, branch
 		addq.w	#8,a2					; skip extended frame
-	
-	.notaddrerr:		
+
+	.notaddrerr:
 		jsr	Console_WriteLine_Formatted(pc)
 
 	.skip2:
@@ -944,23 +958,23 @@ SubCPUError:
 		addq.w	#1,d1							; skip a line
 		moveq	#1,d0							; left margin for data registers
 		jsr	Console_SetPosAsXY(pc)
-		
-		jsr	Console_StartNewLine(pc)	
-		
+
+		jsr	Console_StartNewLine(pc)
+
 		; -----------------
 		; Stack contents
 		; -----------------
 
 		movea.l (program_ram).l,a1			; a1 = sub CPU initial stack pointer
 		adda.l	#program_ram,a1				; convert to main CPU address
-		
+
 		lea	sizeof_dumpedregs+4+4(a4),a2			; a2 = top of exception frame
 		;subq.l	#1,a1								; unnecessary here as sub CPU stack top can never be zero if BIOS is used
 		btst	#extended_frame_bit,d6							; does error has extended stack frame (Address Error only)?
-		beq.s	.notaddrerr2							; if not, branch	
+		beq.s	.notaddrerr2							; if not, branch
 		addq.w	#8,a2					; skip extended frame
-	
-	.notaddrerr2:				
+
+	.notaddrerr2:
 		bsr.w	Error_MaskStackBoundaries
 
 		jsr	Console_GetPosAsXY(pc)			; d0/d1 = XY-pos
@@ -976,7 +990,7 @@ SubCPUError:
 
 	.stack_done:
 		bra.w	Error_IdleLoop
-	
+
 ; ----------------------------------------------------------------------------
 ; Main error handler
 ; ----------------------------------------------------------------------------
@@ -1009,16 +1023,16 @@ SubCPUError:
 ;				jmp <ConsoleProgram> is word-aligned.
 ; ----------------------------------------------------------------------------
 
-ErrorHandler:	
+ErrorHandler:
 		disable_ints						; disable interrupts for good
 		lea	-sizeof_Console_RAM(sp),sp		; STACK => allocate memory for console
 		pushr.l d0-a6 					; STACK => dump registers ($3C bytes)
 
 .waitsubbus:
-		; Halt the Sub CPU	
+		; Halt the Sub CPU
 		bset	#sub_bus_request_bit,(mcd_reset).l			; request the sub CPU bus
 		beq.s	.waitsubbus									; branch if it has been granted
-	
+
 		jsr	ErrorHandler_SetupVDP(pc)
 		lea sizeof_dumpedregs+sizeof_Console_RAM(sp),a4	; a4 = arguments, stack frame
 
@@ -1048,7 +1062,7 @@ ErrorHandler:
 		move.b	(a1)+,d6						; d6 = configuration bitfield
 		bpl.s	.align_ok						; if "_eh_align_offset" is not set, branch
 		addq.w	#1,a1							; skip a byte to avoid address error on reading the next word
-		
+
 	.align_ok:
 		lea	(a1),a3						; a3 may be used to fetch console program address later
 
@@ -1060,7 +1074,7 @@ ErrorHandler:
 		move.l	2(a4),d1						; d1 = address error offset
 		jsr	Error_DrawOffsetLocation(pc)
 		addq.w	#8,a4							; skip extension part of the stack frame
-	
+
 	.skip:
 		; Print exception offset
 		lea Str_Offset(pc),a0				; a0 = label string
@@ -1081,7 +1095,7 @@ ErrorHandler:
 		; ----------------
 		; Registers
 		; ----------------
-	
+
 		lea	4(sp),a2						; use register buffer as arguments
 
 		; Print data registers
@@ -1171,7 +1185,7 @@ ErrorHandler:
 		btst	#return_bit,d6							; is execute console program (at the end) bit set?
 		bne.s	Error_RunConsoleProgram
 
-Error_IdleLoop:	
+Error_IdleLoop:
 		nop
 		bra.s	Error_IdleLoop
 
@@ -1191,7 +1205,7 @@ Error_RunConsoleProgram:
 		rts										; jump to a3
 ; ===========================================================================
 
-Error_InitConsole:	
+Error_InitConsole:
 		lea	ErrorHandler_ConsoleConfig(pc),a1
 		lea	Art1bpp_Font(pc),a2
 		jmp	Console_Init(pc)				; d5 = On-screen position
@@ -1206,7 +1220,7 @@ Error_InitConsole:
 ; 	uses d1.l, d2.l
 ; ----------------------------------------------------------------------------
 
-Error_MaskStackBoundaries:	
+Error_MaskStackBoundaries:
 		move.l 	#$FFFFFF,d1
 
 		move.l	a1,d2
@@ -1260,8 +1274,8 @@ Error_DrawStackRow_Continue:
 		cmpa.l	a1,a2					; is current word out of stack?
 		bcs.s	.in_stack						; if not, branch
 		moveq_	pal3,d1	; use dark blue
-		
-	.in_stack:	
+
+	.in_stack:
 		move.b	d1,(a0)+				; setup color
 		move.w	(a2)+,d1
 		jsr	FormatHex_Word(pc)
@@ -1287,11 +1301,11 @@ Error_DrawStackRow_Continue:
 ;	uses a2
 ; ----------------------------------------------------------------------------
 
-Error_DrawOffsetLocation:	
+Error_DrawOffsetLocation:
 		jsr	Console_Write(pc)				; display label
 		; fallthrough
 
-Error_DrawOffsetLocation2:	
+Error_DrawOffsetLocation2:
 		pushr.l	d1
 		pushr.l	d1
 		lea	(sp),a2						; a2 = arguments buffer
@@ -1313,7 +1327,7 @@ Error_DrawOffsetLocation2:
 
 sizeof_stringbuffer: = $10
 
-Error_DrawRegisters:     
+Error_DrawRegisters:
 		lea	-sizeof_stringbuffer(sp),sp				; allocate string buffer
 		moveq	#-1,d7						; size of the buffer for formatter functions (we assume buffer will never overflow)
 
@@ -1354,16 +1368,24 @@ Error_DrawInterruptHandler:
 		bne.s	Error_Return				; if not, branch
 
 		movea.l	d0,a2						; a2 = handler routine
-		cmpi.w	#ins_jmp_abs_long,(a2)+				; does routine include jmp (xxx).l opcode?
-		bne.s	.uknown_handler_address		; if not, process "Str_IntHandler_Unknown"
+		cmpi.w	#ins_jmp_abs_long,(a2)+				; does routine start with jmp (xxx).l opcode?
+		bne.s	.chk_jmp_xxx_w			; if not, process "Str_IntHandler_Unknown"
 		move.l	(a2),d1					; d1 = interrupt handler offset
 		bra.s	Error_DrawOffsetLocation
 ; ===========================================================================
 
+.chk_jmp_xxx_w:
+		cmpi.w	#ins_jmp_abs_short,-2(a2)				; does routine start with jmp (xxx).w opcode?
+		bne.s	.uknown_handler_address		; if not, branch
+		move.w	(a2),d1
+		ext.l	d1							; d1 = interrupt handler offset
+		bra.s	Error_DrawOffsetLocation
+; ===========================================================================
+
 .uknown_handler_address:
-		jsr	Console_Write_Formatted(pc)
+		jsr	Console_Write(pc)
 		lea	Str_Undefined(pc),a1
-		jmp	Console_WriteLine_Formatted(pc)
+		jmp	Console_WriteLine(pc)
 
 ; ----------------------------------------------------------------------------
 ; Subroutine to guess caller by inspecting stack
@@ -1408,23 +1430,20 @@ Error_GuessCaller:
 ; ----------------------------------------------------------------------------
 ; Subroutine to setup/reset VDP in order to display properly
 
-; 	uses d0.l 
+; 	uses d0.l
 ; ----------------------------------------------------------------------------
 
-ErrorHandler_SetupVDP:	
+ErrorHandler_SetupVDP:
 		lea (vdp_control_port).l,a5				; a5 = VDP control port
 		lea vdp_data_port-vdp_control_port(a5),a6		; a6 = VDP data port
 
-		; Make sure there are no pending writes to VDP (unnecessary in this context)
-		tst.w	(a5)
-
 		; Make sure there are no DMAs occuring, otherwise wait
 	.wait_dma:
-		move.w	(a5),ccr				; is a DMA occuring?
-		bvs.s	.wait_dma				;if so,  wait until it's finished
+		move.w	(a5),ccr				; is a DMA occurring? (also clears VDP write flag)
+		bvs.s	.wait_dma				; if so,  wait until it's finished
 
 		; Setup VDP registers for Error Handler screen
-		lea 	ErrorHandler_VDPConfig(pc),a0
+		lea ErrorHandler_VDPConfig(pc),a0
 
 	.setup_regs:
 		move.w	(a0)+,d0
@@ -1435,12 +1454,12 @@ ErrorHandler_SetupVDP:
 
 	.done:
 		; Remove all sprites, reset horizontal and vertical scrolling
-		moveq	#0,d0			
+		moveq	#0,d0
 		vdp_comm.l	move,0,vram,write,(a5)	; reset sprites and horizontal scrolling (HSRAM)
-		move.l	d0,(a6)				; ''	
+		move.l	d0,(a6)				; ''
 		vdp_comm.l	move,0,vsram,write,(a5)	; reset vertical scrolling
 		move.l	d0,(a6)				; ''
-	
+
 		; Fill screen with black
 		vdp_comm.l	move,0,cram,write,(a5)
 		move.w	d0,(a6)
@@ -1451,7 +1470,7 @@ ErrorHandler_SetupVDP:
 ; Error screen's VDP configuration
 ; ----------------------------------------------------------------------------
 
-ErrorHandler_VDPConfig:	
+ErrorHandler_VDPConfig:
 		dc.w	vdp_md_color													; $8004; normal color mode, horizontal interrupts disabled
 		dc.w 	vdp_enable_vint|vdp_enable_dma|vdp_ntsc_display|vdp_md_display 	; $8134; Mode 5, NTSC, DMA and vertical interrupts enabled, display disabled
 		dc.w	vdp_sprite_table						; $8500; sprite attribute table at 0
@@ -1465,7 +1484,7 @@ ErrorHandler_VDPConfig:
 		dc.w	vdp_window_y_pos						; $9200; reset Window Y-position
 		; fallthrough
 
-ErrorHandler_VDPConfig_Nametables:	
+ErrorHandler_VDPConfig_Nametables:
 		dc.w	vdp_fg_nametable+(VRAM_ErrorScreen>>10)	; $8202, set Plane A nametable offset in VRAM
 		dc.w	vdp_bg_nametable+(VRAM_ErrorScreen>>13)	; $8404, set Plane B nametable offset in VRAM
 		dc.w	0	; terminator
@@ -1483,7 +1502,7 @@ ErrorHandler_ConsoleConfig:
 	;	with different color indecies at different VRAM locations.
 	;	However, this is not used for this Error Handler
 	; ----------------------------------------------------------------------------
-				
+
 		vdp_comm.l	dc,VRAM_Font,vram,write	; font offset in VRAM
 		dc.w	$0000, $0001, $0010, $0011	; decompression table for 1bpp nibbles
 		dc.w	$0100, $0101, $0110, $0111	; ''
@@ -1521,11 +1540,11 @@ ErrorHandler_ConsoleConfig:
 	; Console RAM initial config
 	; ----------------------------------------------------------------------------
 
-ErrorHandler_ConsoleConfig_Initial:	
+ErrorHandler_ConsoleConfig_Initial:
 		vdp_comm.l	dc,VRAM_ErrorScreen,vram,write	; screen start address / plane nametable pointer
 		; fallthrough
 
-ErrorHandler_ConsoleConfig_Shared:	
+ErrorHandler_ConsoleConfig_Shared:
 		dc.w	40							; number of characters per line
 		dc.w	40							; number of characters on the first line (meant to be the same as the above)
 		dc.w	0							; base font pattern (tile id for ASCII $00 + palette flags)
@@ -1551,7 +1570,11 @@ Str_Caller:
  		dc.b	pal1,'Caller: ',0
 
 Str_OffsetLocation:
-		dc.b	pal2,hex|long,' ',pal0,sym|long|split|forced,pal2,symdisp|weak,0
+	if UseCompactOffsets
+		dc.b 	pal2,hex|byte,hex|word,' ',pal0,sym|long|split|forced,pal2,symdisp|weak,0	; 24-bit offsets
+	else
+		dc.b 	pal2,hex|long,' ',pal0,sym|long|split|forced,pal2,symdisp|weak,0	; 32-bit offsets
+	endc
 
 Str_USP:
 		dc.b	setx,$10,pal0,'usp: ',pal2,hex|long,0
@@ -1573,38 +1596,36 @@ Str_Undefined:
 ; Error Handler 1bpp font graphics
 ; ----------------------------------------------------------------------------
 
-Art1bpp_Font:	
-	dc.w	Art1bpp_Font_End-Art1bpp_Font_Start-1			; font size - 1
+Art1bpp_Font:
+		dc.w	sizeof_Art1bpp_Font_Start-1			; font size - 1
 
 Art1bpp_Font_Start:
-	dc.l	$00000000, $00000000, $183C3C18, $18001800, $6C6C6C00, $00000000, $6C6CFE6C, $FE6C6C00
-	dc.l	$187EC07C, $06FC1800, $00C60C18, $3060C600, $386C3876, $CCCC7600, $18183000, $00000000
-	dc.l	$18306060, $60301800, $60301818, $18306000, $00EE7CFE, $7CEE0000, $0018187E, $18180000
-	dc.l	$00000000, $18183000, $000000FE, $00000000, $00000000, $00383800, $060C1830, $60C08000
-	dc.l	$7CC6CEDE, $F6E67C00, $18781818, $18187E00, $7CC60C18, $3066FE00, $7CC6063C, $06C67C00
-	dc.l	$0C1C3C6C, $FE0C0C00, $FEC0FC06, $06C67C00, $7CC6C0FC, $C6C67C00, $FEC6060C, $18181800
-	dc.l	$7CC6C67C, $C6C67C00, $7CC6C67E, $06C67C00, $001C1C00, $001C1C00, $00181800, $00181830
-	dc.l	$0C183060, $30180C00, $0000FE00, $00FE0000, $6030180C, $18306000, $7CC6060C, $18001800
-	dc.l	$7CC6C6DE, $DCC07E00, $386CC6C6, $FEC6C600, $FC66667C, $6666FC00, $3C66C0C0, $C0663C00
-	dc.l	$F86C6666, $666CF800, $FEC2C0F8, $C0C2FE00, $FE62607C, $6060F000, $7CC6C0C0, $DEC67C00
-	dc.l	$C6C6C6FE, $C6C6C600, $3C181818, $18183C00, $3C181818, $D8D87000, $C6CCD8F0, $D8CCC600
-	dc.l	$F0606060, $6062FE00, $C6EEFED6, $D6C6C600, $C6E6E6F6, $DECEC600, $7CC6C6C6, $C6C67C00
-	dc.l	$FC66667C, $6060F000, $7CC6C6C6, $C6D67C06, $FCC6C6FC, $D8CCC600, $7CC6C07C, $06C67C00
-	dc.l	$7E5A1818, $18183C00, $C6C6C6C6, $C6C67C00, $C6C6C6C6, $6C381000, $C6C6D6D6, $FEEEC600
-	dc.l	$C66C3838, $386CC600, $6666663C, $18183C00, $FE860C18, $3062FE00, $7C606060, $60607C00
-	dc.l	$C0603018, $0C060200, $7C0C0C0C, $0C0C7C00, $10386CC6, $00000000, $00000000, $000000FF
-	dc.l	$30301800, $00000000, $0000780C, $7CCC7E00, $E0607C66, $6666FC00, $00007CC6, $C0C67C00
-	dc.l	$1C0C7CCC, $CCCC7E00, $00007CC6, $FEC07C00, $1C3630FC, $30307800, $000076CE, $C67E067C
-	dc.l	$E0607C66, $6666E600, $18003818, $18183C00, $0C001C0C, $0C0CCC78, $E060666C, $786CE600
-	dc.l	$18181818, $18181C00, $00006CFE, $D6D6C600, $0000DC66, $66666600, $00007CC6, $C6C67C00
-	dc.l	$0000DC66, $667C60F0, $000076CC, $CC7C0C1E, $0000DC66, $6060F000, $00007CC0, $7C067C00
-	dc.l	$3030FC30, $30361C00, $0000CCCC, $CCCC7600, $0000C6C6, $6C381000, $0000C6C6, $D6FE6C00
-	dc.l	$0000C66C, $386CC600, $0000C6C6, $CE76067C, $0000FC98, $3064FC00, $0E181870, $18180E00
-	dc.l	$18181800, $18181800, $7018180E, $18187000, $76DC0000, $00000000
+		dc.l	$00000000, $00000000, $183C3C18, $18001800, $6C6C6C00, $00000000, $6C6CFE6C, $FE6C6C00
+		dc.l	$187EC07C, $06FC1800, $00C60C18, $3060C600, $386C3876, $CCCC7600, $18183000, $00000000
+		dc.l	$18306060, $60301800, $60301818, $18306000, $00EE7CFE, $7CEE0000, $0018187E, $18180000
+		dc.l	$00000000, $18183000, $000000FE, $00000000, $00000000, $00383800, $060C1830, $60C08000
+		dc.l	$7CC6CEDE, $F6E67C00, $18781818, $18187E00, $7CC60C18, $3066FE00, $7CC6063C, $06C67C00
+		dc.l	$0C1C3C6C, $FE0C0C00, $FEC0FC06, $06C67C00, $7CC6C0FC, $C6C67C00, $FEC6060C, $18181800
+		dc.l	$7CC6C67C, $C6C67C00, $7CC6C67E, $06C67C00, $001C1C00, $001C1C00, $00181800, $00181830
+		dc.l	$0C183060, $30180C00, $0000FE00, $00FE0000, $6030180C, $18306000, $7CC6060C, $18001800
+		dc.l	$7CC6C6DE, $DCC07E00, $386CC6C6, $FEC6C600, $FC66667C, $6666FC00, $3C66C0C0, $C0663C00
+		dc.l	$F86C6666, $666CF800, $FEC2C0F8, $C0C2FE00, $FE62607C, $6060F000, $7CC6C0C0, $DEC67C00
+		dc.l	$C6C6C6FE, $C6C6C600, $3C181818, $18183C00, $3C181818, $D8D87000, $C6CCD8F0, $D8CCC600
+		dc.l	$F0606060, $6062FE00, $C6EEFED6, $D6C6C600, $C6E6E6F6, $DECEC600, $7CC6C6C6, $C6C67C00
+		dc.l	$FC66667C, $6060F000, $7CC6C6C6, $C6D67C06, $FCC6C6FC, $D8CCC600, $7CC6C07C, $06C67C00
+		dc.l	$7E5A1818, $18183C00, $C6C6C6C6, $C6C67C00, $C6C6C6C6, $6C381000, $C6C6D6D6, $FEEEC600
+		dc.l	$C66C3838, $386CC600, $6666663C, $18183C00, $FE860C18, $3062FE00, $7C606060, $60607C00
+		dc.l	$C0603018, $0C060200, $7C0C0C0C, $0C0C7C00, $10386CC6, $00000000, $00000000, $000000FF
+		dc.l	$30301800, $00000000, $0000780C, $7CCC7E00, $E0607C66, $6666FC00, $00007CC6, $C0C67C00
+		dc.l	$1C0C7CCC, $CCCC7E00, $00007CC6, $FEC07C00, $1C3630FC, $30307800, $000076CE, $C67E067C
+		dc.l	$E0607C66, $6666E600, $18003818, $18183C00, $0C001C0C, $0C0CCC78, $E060666C, $786CE600
+		dc.l	$18181818, $18181C00, $00006CFE, $D6D6C600, $0000DC66, $66666600, $00007CC6, $C6C67C00
+		dc.l	$0000DC66, $667C60F0, $000076CC, $CC7C0C1E, $0000DC66, $6060F000, $00007CC0, $7C067C00
+		dc.l	$3030FC30, $30361C00, $0000CCCC, $CCCC7600, $0000C6C6, $6C381000, $0000C6C6, $D6FE6C00
+		dc.l	$0000C66C, $386CC600, $0000C6C6, $CE76067C, $0000FC98, $3064FC00, $0E181870, $18180E00
+		dc.l	$18181800, $18181800, $7018180E, $18187000, $76DC0000, $00000000
 
-Art1bpp_Font_End:
-
-_ValidHeader = $DEB2
+		arraysize Art1bpp_Font_Start
 
 ; ----------------------------------------------------------------------------
 ; Subroutine to find nearest symbol for given offset
@@ -1706,7 +1727,7 @@ GetSymbolByOffset:
 
 	.load_prev_block:
 		swap	d1
-	
+
 	.load_prev_block_2:
 		moveq	#0,d0
 		move.w	d1,d0
@@ -1766,7 +1787,7 @@ DecodeSymbol:
 		cmp.b	2(a2),d2						; is this code of the same length?
 		beq.s	.code_found 					; if not, branch
 		bcs.s	.code_extend					; if length is lower, append code
-	
+
 	.code_check_next:
 		addq.w	#4,a2
 		cmp.w	(a2),d1 						; does this node has the same code?
@@ -1779,7 +1800,7 @@ DecodeSymbol:
 	.code_found:
 		move.b	3(a2),(a0)+					; get decoded character
 		beq.s	.decode_done					; if it's null character, branch
-		
+
 		dbf	d7,.decode_new_node
 		jsr	(a4)
 		bcc.s	.decode_new_node
@@ -1835,10 +1856,10 @@ FormatHex_Byte:
 		lsr.w	#4,d2
 		and.w	d3,d2						; get nibble
 		move.b	HexDigitToChar(pc,d2.w),(a0)+
-	
-		dbf	d7,FormatHex_Word_WriteLastNibble
+
+		dbf	d7,FormatHex_Word_WriteLastNibble2
 		jsr	(a4)
-		bcc.s	FormatHex_Word_WriteLastNibble
+		bcc.s	FormatHex_Word_WriteLastNibble2
 		rts		; return carry=1
 ; ===========================================================================
 
@@ -1855,22 +1876,25 @@ FormatHex_Word_Swapped:
 
 
 FormatHex_Word:
-		moveq	#4,d2
-		moveq	#$F,d3
 
+		__it:	= 0
 		rept 4-1
-		rol.w	d2,d1
-		move.b	d1,d4
-		and.w	d3,d4						; get nibble
+		__it:	= __it+1
+		rol.w	#4,d1
+		moveq	#$F,d4
+		and.w	d1,d4								; get nibble
 		move.b	HexDigitToChar(pc,d4.w),(a0)+
-		dbf	d7,*+6						; if buffer is not exhausted, branch
-		jsr	(a4)						; otherwise, call buffer flush function	
-		bcs.s	FormatHex_Return			; if buffer is terminated, branch
+		dbf	d7,FormatHex_Word_Nibble\#__it		; if buffer is not exhausted, branch
+		jsr	(a4)								; otherwise, call buffer flush function
+		bcs.s	FormatHex_Return					; if buffer is terminated, branch
+	FormatHex_Word_Nibble\#__it:					; set label for the next nibble
 		endr
 
-		rol.w	d2,d1
-
 FormatHex_Word_WriteLastNibble:
+		rol.w	#4,d1
+		moveq	#$F,d3
+
+FormatHex_Word_WriteLastNibble2:
 		and.w	d3,d1						; get nibble
 		move.b	HexDigitToChar(pc,d1.w),(a0)+
 		dbf	d7,FormatHex_Return
@@ -1883,7 +1907,51 @@ FormatHex_Return:
 
 HexDigitToChar:
 		dc.b	'0123456789ABCDEF'
+; ===========================================================================
 
+FormatHex_LongWord_Trim:
+		swap	d1
+		beq.s	FormatHex_Word_Trim_Swapped		; if high word is 0000, we only have to display the lower one
+
+FormatHex_LongWord_Trim_Swapped_NonZero:
+		bsr.s	FormatHex_Word_Trim
+		bcs.s	FormatHex_Return				; if buffer terminated, branch
+		bra.s	FormatHex_Word_Swapped			; should display a word without trimming now
+
+FormatHex_Word_Trim_Swapped:
+		swap	d1
+
+FormatHex_Word_Trim:
+
+		__it:	= 0
+		rept 4-2
+		__it:	= __it+1
+
+		rol.w	#4,d1
+		moveq	#$F,d4
+		and.w	d1,d4
+		beq.s	FormatHex_Word_Trim_Nibble\#__it		; if nibble is 0, check next nibble (don't draw)
+
+		; If we get to this point, we are going to branch to "non-trim" routines from now on ...
+		move.b	HexDigitToChar(pc,d4), (a0)+			; output digit
+		dbf	d7,FormatHex_Word_Nibble\#__it			; if buffer is not exhausted, branch to normal nibble drawing routine
+		jsr	(a4)									; otherwise, call buffer flush function
+		bcc.s	FormatHex_Word_Nibble\#__it				; if buffer is not terminated, branch to normal nibble drawing routine
+		rts
+
+	FormatHex_Word_Trim_Nibble\#__it:
+		endr
+
+		; Pre-last iteration is special as it connects with `FormatHex_Word_WriteLastNibble`
+		rol.w	#4,d1
+		moveq	#$F,d4
+		and.w	d1,d4
+		beq.s	FormatHex_Word_WriteLastNibble			; even if this nibble is 0, the last one is rendered anyways
+		move.b	HexDigitToChar(pc,d4.w),(a0)+
+		dbf	d7,FormatHex_Word_WriteLastNibble	; if buffer is not exhausted, branch
+		jsr	(a4)									; otherwise, call buffer flush function
+		bcc.s	FormatHex_Word_WriteLastNibble			; if buffer is not terminated, branch
+		rts
 
 ; ----------------------------------------------------------------------------
 ; Binary number String formatter
@@ -1931,7 +1999,7 @@ FormatBin_Handlers:
 		dbf	d7,.buffer_ok
 		jsr	(a4)
 		bcs.s	.quit
-		
+
 	.buffer_ok:
 		dbf	d2,.loop
 
@@ -1957,15 +2025,15 @@ FormatBin_Word:
 		dbf	d7,.buffer_ok
 		jsr	(a4)
 		bcs.s	FormatBin_Return
-		
+
 	.buffer_ok:
 		dbf	d2,.loop
-		
+
 FormatBin_Return:
 		rts
 
 ; ----------------------------------------------------------------------------
-; Decimal number string formatter 
+; Decimal number string formatter
 
 ; input:
 ;	d1	= value
@@ -2056,7 +2124,7 @@ FormatDec_LongWord:
 
 	.process_digit:
 		move.w	d3,d2
-		
+
 	.find_digit:
 		sub.l	d4,d1
 		dbcs	d2,.find_digit
@@ -2068,7 +2136,7 @@ FormatDec_LongWord:
 		beq.s	.next_digit						; if not, branch
 		addi.b	#'0',d2
 		move.b	d2,(a0)+
-		
+
 		dbf	d7,.next_digit
 		jsr	(a4)
 		bcs.s	FormatDec_Return
@@ -2080,7 +2148,7 @@ FormatDec_LongWord:
 		bra.s	FormatDec_Cont		; continue drawing with word-sized version
 		; note that lower word of d4 already contains next decimal base ...
 ; ===========================================================================
-									
+
 
 DecimalBase_Long:
 	dc.l	1000000000
@@ -2105,7 +2173,7 @@ DecimalBase_Byte:
 	dc.w	100
 	dc.w	10
 	dc.w	-1				; marks end of digit searching
-		
+
 ; ----------------------------------------------------------------------------
 ; Symbol String formatter
 
@@ -2149,7 +2217,7 @@ FormatSym:
 		jsr	GetSymbolByOffset(pc)			; IN:	d1 = offset
 		bne.s	FormatSym_ChkUnknownSymbol		; OUT:	d0/Z = error status, d1 = displacement, a1 = symbol pointer
 		move.l	d1,(sp)						; replace offset stored in stack as D1 with displacement
-		jsr	DecodeSymbol(pc)				; IN:	a1 = symbol pointer				
+		jsr	DecodeSymbol(pc)				; IN:	a1 = symbol pointer
 		popr.l	d1/d3/a1-a2						; NOTICE: This doesn't affect CCR, so this routine still returns carry
 		bcs.s	FormatSym_Return				; if got carry (buffer termination), return immediately
 
@@ -2190,12 +2258,12 @@ FormatSym_Displacement:
 		dbf	d7,.buffer_ok
 		jsr	(a4)
 		bcs.s	FormatSym_Return
-	
+
 	.buffer_ok:
-		swap	d1								; swap displacement longword
-		tst.w	d1								; test higher 16-bits of displacement
-		beq.w		FormatHex_Word_Swapped			; if bits are empty, display displacement as word
-		bra.w		FormatHex_LongWord_Swapped		; otherwise, display longword
+		swap	d1											; swap displacement longword
+		tst.w	d1											; test higher 16-bits of displacement
+		beq.w	FormatHex_Word_Trim_Swapped					; if bits are empty, display displacement as word
+		bra.w	FormatHex_LongWord_Trim_Swapped_NonZero		; otherwise, display longword
 
 ; ----------------------------------------------------------------------------
 ; input:
@@ -2221,7 +2289,7 @@ FormatSym_Offset:
 ;	uses d2.w, d3.b, a0, a1, a2
 ; ----------------------------------------------------------------------------
 
-FormatString:	
+FormatString:
 		pushr.l	d0-d4/a3,-(sp)
 
 	; NOTICE: This loop shouldn't use registers D0/D1, as control codes B0..BF, C0..CF
@@ -2281,16 +2349,17 @@ FormatString_CodeHandlers:
 		add.b	d2,d2								; $06	; multiply 4-bit code by 2 as instructions in the code handlers below are word-sized
 		jmp	.argument_fetch(pc,d2.w)			; $08	; jump to an appropriate instruction (note that even invalid codes won't crash)
 ; ===========================================================================
-	.null_terminator:	
+	.null_terminator:
 		subq.w	#1,a0								; $0C	; overwrite null-terminator (part of "String" section, see below)
 		rts											; $0E
 ; ===========================================================================
 		; codes B0..BF : Display symbol
 		lea	FormatSym_Handlers(pc),a3			; $00
-		move.b	d3,d2								; $04
-		andi.w	#3,d2								; $06	; d2 = 0, 1, 3 ... (ignore handlers for signed values)
-		add.w	d2,d2								; $0A	; multiply 4-bit code by 2 as instructions in the code handlers below are word-sized
-		jmp	.argument_fetch(pc,d2.w)			; $0C	; jump to an appropriate instruction (note that even invalid codes won't crash)
+		moveq	#3, d2								; $04
+		and.b	d3, d2								; $06	; d2 = 0, 1, 3 ... (ignore handlers for signed values)
+		add.w	d2, d2								; $08	; multiply 4-bit code by 2 as instructions in the code handlers below are word-sized
+		jmp	.argument_fetch(pc,d2.w)			; $0A	; jump to an appropriate instruction (note that even invalid codes won't crash)
+		nop										; $0E
 ; ===========================================================================
 		; codes C0..CF : Display symbol's displacement (to be used after codes B0..BF, if extra formatting is due)
 		tst.w	d0									; $00	; check "GetSymbolByOffset" (see "FormatSym" code)
@@ -2304,7 +2373,7 @@ FormatString_CodeHandlers:
 ; ===========================================================================
 		; codes D0..DF : String
 		movea.l	(a2)+,a3						; $00	; a3 = string ptr
-		
+
 	.string_loop:
 		move.b	(a3)+,(a0)+						; $02	; copy char
 		dbeq	d7,.string_loop					; $04	; loop until either buffer ends or zero-terminator is met
@@ -2326,7 +2395,7 @@ FormatString_CodeHandlers:
 ; --------------------------------------------------------------
 ; WARNING!
 ; The code in the following blocks are critical and shouldn't
-; be altered. Each instruction MUST take 2 bytes, so even the 
+; be altered. Each instruction MUST take 2 bytes, so even the
 ; invalid codes won't crash, but only break the flow ...
 ; --------------------------------------------------------------
 
@@ -2372,7 +2441,7 @@ FormatString_CodeHandlers:
 .after_restore_char2:
 		dbf	d7,.after_restore_char3
 		jsr	(a4)
-		bcs.s	.return2  
+		bcs.s	.return2
 
 .after_restore_char3:
 		move.b	(a1)+,(a0)+
@@ -2380,7 +2449,7 @@ FormatString_CodeHandlers:
 .after_restore_char:
 		dbf	d7,.return2
 		jmp	(a4)
-		
+
 ; ===========================================================================
 ; Console Module
 ; ----------------------------------------------------------------------------
@@ -2397,7 +2466,7 @@ FormatString_CodeHandlers:
 ;	uses d0.l, d1.l, d2.w, d3.l, d4.w, a0, a5, a6
 ; ----------------------------------------------------------------------------
 
-Console_Init:	
+Console_Init:
 		lea	vdp_control_port,a5
 		lea	vdp_data_port-vdp_control_port(a5),a6
 
@@ -2417,7 +2486,7 @@ Console_Init:
 		addq.w	#2,a1					; skip end marker
 
 		; Load palette
-		lea	Console_FillTile(pc),a0		
+		lea	Console_FillTile(pc),a0
 		vdp_comm.l	move,0,cram,write,(a5)	; VDP => Setup CRAM write at offset $00
 		moveq	#cBlack,d0					; d0 = black color
 		moveq	#4-1,d3				; d3 = number of palette lines - 1
@@ -2425,8 +2494,8 @@ Console_Init:
 	.fill_palette_line:
 		move.w	d0,(a6)			; transparent color is always black
 		move.w	(a1)+,d2			; get CRAM data entry
-	
-	.iscolor:	
+
+	.iscolor:
 		move.w	d2,(a6)			; write to CRAM
 		move.w	(a1)+,d2			; get next CRAM data entry
 		bpl.s	.iscolor					; if color, branch
@@ -2451,7 +2520,7 @@ Console_Init:
 ;	uses d0.l, d1.l, a1, a3
 ; ----------------------------------------------------------------------------
 
-Console_Reset:	
+Console_Reset:
 		move.l	(a1)+,d5				; d5 = VDP command with start on-screen position
 		; fallthrough
 
@@ -2472,7 +2541,7 @@ Console_Reset:
 ;	uses d0.l, d1.l, a1, a3
 ; ----------------------------------------------------------------------------
 
-Console_InitShared:	
+Console_InitShared:
 		; WARNING! Make sure a5 and a6 are properly set when calling this fragment separately
 
 		; Init Console RAM
@@ -2487,7 +2556,7 @@ Console_InitShared:
 		moveq	#0,d0					; d0 = fill pattern
 		move.w	(a1)+,d1				; d1 = size of screen in tiles - 1
 		bsr.s	Console_FillTile		; fill screen
-				
+
 		vdp_comm.l	move,0,vram,write,(a5)	; VDP => Setup VRAM at tile 0
 		;moveq	#0,d0					; d0 = fill pattern		-- OPTIMIZED OUT
 		moveq	#0,d1					; d1 = number of tiles to fill - 1
@@ -2514,10 +2583,10 @@ Console_FillTile:
 ;	d1.w = y pos
 ; ----------------------------------------------------------------------------
 
-Console_SetPosAsXY_Stack: 
+Console_SetPosAsXY_Stack:
 		movem.w	4(sp),d0-d1
 
-Console_SetPosAsXY: 
+Console_SetPosAsXY:
 		pushr.l	d1-d2/a3
 		move.l	usp,a3
 		cmpi.b	#_ConsoleMagic,Console_Magic(a3)
@@ -2546,7 +2615,7 @@ Console_SetPosAsXY:
 ;	d1.w = y pos
 ; ----------------------------------------------------------------------------
 
-Console_GetPosAsXY: 
+Console_GetPosAsXY:
 		pushr.l	a3
 		move.l	usp,a3
 		cmpi.b	#_ConsoleMagic,Console_Magic(a3)
@@ -2558,7 +2627,7 @@ Console_GetPosAsXY:
 		move.l	d1,d0
 		swap	d0
 		lsr.w	d0
-		
+
 	.quit:
 		popr.l	a3
 		rts
@@ -2567,7 +2636,7 @@ Console_GetPosAsXY:
 ; Subroutine to transfer console to a new line
 ; ----------------------------------------------------------------------------
 
-Console_StartNewLine: 
+Console_StartNewLine:
 		pushr.l	a3
 		move.l	usp,a3
 		cmpi.b	#_ConsoleMagic,Console_Magic(a3)
@@ -2583,7 +2652,7 @@ Console_StartNewLine:
 		move.w	(a3)+,(a3)+		; reset characters on line counter (copy "CharsPerLine" to "CharsRemaining")
 
 		popr.w	d0
-		
+
 	.quit:
 		popr.l	a3
 		rts
@@ -2595,13 +2664,13 @@ Console_StartNewLine:
 ;	d1.w = base pattern
 ; ----------------------------------------------------------------------------
 
-Console_SetBasePattern: 
+Console_SetBasePattern:
 		pushr.l	a3
 		move.l	usp,a3
 		cmpi.b	#_ConsoleMagic,Console_Magic(a3)
 		bne.s	.quit
 		move.w	d1,Console_BasePattern(a3)
-	
+
 	.quit:
 		popr.l	a3
 		rts
@@ -2613,7 +2682,7 @@ Console_SetBasePattern:
 ;	d1.w = width
 ; ----------------------------------------------------------------------------
 
-Console_SetWidth: 
+Console_SetWidth:
 		pushr.l	a3
 		move.l	usp,a3
 		cmpi.b	#_ConsoleMagic,Console_Magic(a3)
@@ -2637,13 +2706,13 @@ Console_SetWidth:
 ;	a0	= pointer to the end of string
 ; ----------------------------------------------------------------------------
 
-Console_WriteLine_WithPattern: 
+Console_WriteLine_WithPattern:
 		bsr.s	Console_SetBasePattern	; set new base pattern
 
-Console_WriteLine: 
+Console_WriteLine:
 		pea	Console_StartNewLine(pc)	; start new line before returning to caller
 
-Console_Write: 
+Console_Write:
 		pushr.l	d1-d6/a3/a6
 		move.l	usp,a3
 		cmpi.b	#_ConsoleMagic,Console_Magic(a3)
@@ -2664,7 +2733,7 @@ Console_Write:
 	.done:
 		movem.w	d2-d4,(a3)			; save d2-d4 (ignore d6 as it won't get changed anyways ...)
 		move.l	d5,-(a3)			; save screen position
-	
+
 	.quit:
 		popr.l	d1-d6/a3/a6
 		rts
@@ -2776,15 +2845,15 @@ Console_Write:
 ;	uses d7.l, a0, a1, a2
 ; ----------------------------------------------------------------------------
 
-Console_WriteLine_Formatted: 
+Console_WriteLine_Formatted:
 		pea		Console_StartNewLine(pc)	; start new line before returning to caller
 
-Console_Write_Formatted: 
+Console_Write_Formatted:
 
 sizeof_stringbuffer: = $10
 
 		pushr.l	a4
-	
+
 		lea	Console_FlushBuffer(pc),a4		; flushing function
 		lea	-sizeof_stringbuffer(sp),sp		; allocate string buffer
 		lea	(sp),a0					; a0 = string buffer
@@ -2792,7 +2861,7 @@ sizeof_stringbuffer: = $10
 		moveq	#sizeof_stringbuffer-2,d7			; d7 = number of characters before flush -1
 		jsr	FormatString(pc)
 		lea	sizeof_stringbuffer(sp),sp		; free string buffer
-	
+
 		popr.l	a4
 		rts
 
@@ -2809,7 +2878,7 @@ sizeof_stringbuffer: = $10
 ;	carry	0 = continue operation
 ;			1 = terminate FormatString with error condition
 
-; WARNING: This function shouldn't modify d0-d4 / a1-a3!
+; WARNING: This function can only modify a0 / d7 !
 ; ----------------------------------------------------------------------------
 
 Console_FlushBuffer:
@@ -2834,10 +2903,10 @@ Console_FlushBuffer:
 ;	a6 = VDP Data Port
 ;	d4.w = size of art in bytes - 1
 
-;	uses d0.w, d1.w, d2.w, d4.w, a0 
+;	uses d0.w, d1.w, d2.w, d4.w, a0
 ; ----------------------------------------------------------------------------
 
-Decomp1bpp:	
+Decomp1bpp:
 		moveq	#$1E,d2
 
 	.row:
@@ -2846,16 +2915,16 @@ Decomp1bpp:
 		lsr.b	#3,d1					; d1 = %000a aaab
 		and.w	d2,d1					; d1 = %000a aaa0
 		move.w	(a1,d1.w),(a6)			; decompress first nibble
-	
+
 		add.b	d0,d0					; d0 = %aaab bbb0
 		and.w	d2,d0					; d0 = %000b bbb0
 		move.w	(a1,d0.w),(a6)			; decompress second nibble
-		
+
 		dbf	d4,.row
 
 		rts
 ; ===========================================================================
-		
+
 SymbolData:
 
 		popo
