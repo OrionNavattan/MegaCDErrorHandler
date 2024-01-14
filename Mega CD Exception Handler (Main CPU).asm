@@ -1,6 +1,7 @@
 		pusho
 		opt l.					; . is the local label symbol
 		opt ws+					; allow statements to contain white-spaces
+		opt ae-
 
 ; ----------------------------------------------------------------------------
 ; Mega CD Error Handler - Main CPU module
@@ -9,8 +10,7 @@
 ; Original code by Vladikcomper 2016-2023
 ; Modified by Orion Navattan 2023
 
-; Must be placed at the very end of the ROM for symbol table
-; support, but otherwise can be located anywhere in the ROM.
+; Must be placed at the very end of the ROM for symbol table support
 ; ----------------------------------------------------------------------------
 ; Exception entry points
 ; ----------------------------------------------------------------------------
@@ -47,9 +47,6 @@ Line1111Emu:
 
 ErrorExcept:
 	__ErrorMessage "MAIN CPU: ERROR EXCEPTION", _eh_show_sr_usp
-
-SubCPUTimeout:
-	__ErrorMessage "MAIN CPU: TIMED OUT WAITING FOR SUB CPU", _eh_show_sr_usp
 
 ; ============================================================================
 ; ----------------------------------------------------------------------------
@@ -348,6 +345,10 @@ _ConsoleMagic:	equ	$5D	; magic value stored in Console_Magic
 
 
 _ValidHeader: 	equ $DEB2 ; magic value used to verify presence of symbol table
+
+	if SubCPUSymbolSupport
+SymbolData:		equ wordram_2M	; location where symbol data is decompressed
+	endc
 
 ; ----------------------------------------------------------------------------
 ; Instruction opcodes
@@ -822,7 +823,47 @@ ErrorHandler_ExtraDebuggerList:
 ; ----------------------------------------------------------------------------
 
 SubCPUError:
-		disable_ints				; disable interrupts
+		disable_ints			; disable interrupts for good
+
+	if SubCPUSymbolSupport
+		st.b	(mcd_main_flag).l	; let sub CPU know we've noticed
+
+		lea	-sizeof_Console_RAM(sp),sp		; allocate memory for console on main CPU stack
+		jsr	ErrorHandler_SetupVDP(pc)
+
+		; Initialize console subsystem
+		lea	4(sp),a3
+		jsr	Error_InitConsole(pc)
+
+	.waitsub:
+		tst.b	(mcd_sub_flag).l	; is the sub CPU done?
+		bne.s	.waitsub			; if not, branch
+
+	.waitwordram:
+		btst	#wordram_swapmain_bit,(mcd_mem_mode).l			; do we have wordram access?
+		beq.s	.waitwordram							; if not, wait
+
+	.waitsubbus:
+		; Halt the Sub CPU
+		bset	#sub_bus_request_bit,(mcd_reset).l			; request the sub CPU bus
+		beq.s	.waitsubbus									; branch if it has not been granted
+
+		; Clear the wordram
+		lea (wordram_2M).l,a0
+		moveq_	((sizeof_wordram_2M/4)-1),d5
+		moveq	#0,d4
+
+	.clear_wordram:
+		move.l d4,(a0)+		; clear 4 bytes of wordram
+		dbf d5,.clear_wordram	; repeat for entire wordram
+
+		lea SubCPUSymbols(pc),a0
+		lea (wordram_2M).l,a1
+
+		jsr	(KosDec).w	; decompress the sub CPU's symbol table
+
+	else
+
 		move.b	(mcd_sub_flag).l,(mcd_main_flag).l	; let sub CPU know we've noticed
 
 	.waitsub:
@@ -839,6 +880,7 @@ SubCPUError:
 		; Initialize console subsystem
 		lea	4(sp),a3
 		jsr	Error_InitConsole(pc)
+	endc
 
 		; ----------------
 		; Screen header
@@ -1025,10 +1067,62 @@ SubCPUError:
 
 ErrorHandler:
 		disable_ints						; disable interrupts for good
+
+	if SubCPUSymbolSupport
+		st.b	(mcd_main_flag).l			; let sub CPU know we've crashed
+
+	.waitsub:
+		cmpi.b	#$FF,(mcd_sub_flag).l	; has sub CPU noticed?
+		bne.s	.waitsub		; if not, branch
+
 		lea	-sizeof_Console_RAM(sp),sp		; STACK => allocate memory for console
 		pushr.l d0-a6 					; STACK => dump registers ($3C bytes)
 
-.waitsubbus:
+		jsr	ErrorHandler_SetupVDP(pc)
+		lea sizeof_dumpedregs+sizeof_Console_RAM(sp),a4	; a4 = arguments, stack frame
+
+		move.l	usp,a0
+		pushr.l	a0						; save USP if needed to display later (as it's overwritten by the console subsystem)
+
+		; Initialize console subsystem
+		lea	sizeof_dumpedregs+4(sp),a3					; a3 = Console RAM
+		jsr	Error_InitConsole(pc)
+
+	.waitsub2:
+		tst.b	(mcd_sub_flag).l	; is the sub CPU done?
+		bne.s	.waitsub2			; if not, branch
+
+	.waitwordram:
+		btst	#wordram_swapmain_bit,(mcd_mem_mode).l			; do we have wordram access?
+		beq.s	.waitwordram							; if not, wait
+
+	.waitsubbus:
+		; Halt the Sub CPU
+		bset	#sub_bus_request_bit,(mcd_reset).l			; request the sub CPU bus
+		beq.s	.waitsubbus									; branch if it has not been granted
+
+		; Clear the wordram.
+		lea (wordram_2M).l,a0
+		moveq_	((sizeof_wordram_2M/4)-1),d5
+		moveq	#0,d4
+
+	.clear_wordram:
+		move.l d4,(a0)+		; clear 4 bytes of wordram
+		dbf d5,.clear_wordram	; repeat for entire wordram
+
+		lea (MainCPUSymbols).l,a0
+		lea (wordram_2M).l,a1
+
+		pushr.l	a4		; back up a4
+		jsr	(KosDec).w	; decompress the main CPU's symbol table
+		popr.l	a4
+
+	else
+
+		lea	-sizeof_Console_RAM(sp),sp		; STACK => allocate memory for console
+		pushr.l d0-a6 					; STACK => dump registers ($3C bytes)
+
+	.waitsubbus:
 		; Halt the Sub CPU
 		bset	#sub_bus_request_bit,(mcd_reset).l			; request the sub CPU bus
 		beq.s	.waitsubbus									; branch if it has been granted
@@ -1042,6 +1136,7 @@ ErrorHandler:
 		; Initialize console subsystem
 		lea	sizeof_dumpedregs+4(sp),a3					; a3 = Console RAM
 		jsr	Error_InitConsole(pc)
+	endc
 
 		; ----------------
 		; Screen header
@@ -1642,7 +1737,11 @@ Art1bpp_Font_Start:
 ; ----------------------------------------------------------------------------
 
 GetSymbolByOffset:
+	if SubCPUSymbolSupport
+		lea	(SymbolData).l,a1
+	else
 		lea	SymbolData(pc),a1
+	endc
 		cmpi.w	#_ValidHeader,(a1)+	; verify header
 		bne.s	.return_error
 
@@ -1756,8 +1855,11 @@ GetSymbolByOffset:
 ; ----------------------------------------------------------------------------
 
 DecodeSymbol:
-
+	if SubCPUSymbolSupport
+		lea	(SymbolData).l,a3
+	else
 		lea	SymbolData(pc),a3
+	endc
 		cmpi.w	#_ValidHeader,(a3)+			; verify the header
 		bne.s	.return_cc
 		adda.w	(a3),a3						; a3 = Huffman code table
@@ -2925,6 +3027,14 @@ Decomp1bpp:
 		rts
 ; ===========================================================================
 
+	if SubCPUSymbolSupport
+SubCPUSymbols:
+		incbin "Sub CPU Symbols.kos"
+
+MainCPUSymbols:
+		; appended to ROM by the build script
+	else
 SymbolData:
+	endc
 
 		popo

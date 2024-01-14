@@ -12,12 +12,19 @@ DebugFeatures: 		equ 1
 ; Enable debugger extensions
 ; Pressing A/B/C on the exception screen can open other debuggers
 ; Pressing Start or unmapped button returns to the exception
-DebuggerExtensions:	equ 1	; Set to 1 to enable
+DebuggerExtensions:	equ 1
 
 ; Use compact 24-bit offsets instead of 32-bit ones
-; This will display shorter offests next to the symbols in the exception screen header.
-; M68K bus is limited to 24 bits anyways, so not displaying unused bits saves screen space.
+; This will display shorter offests next to the symbols in the exception screen header
+; M68K bus is limited to 24 bits anyways, so not displaying unused bits saves screen space
 UseCompactOffsets:	equ 1
+
+; Enable symbol table support for the sub CPU program
+; This requires the use of wordram for decompressing the tables for both CPUs when an exception occurs
+; IF YOU DISABLE THIS, YOU MUST COMMENT OUT OR REMOVE THE FOLLOWING LINE
+; IN THE BUILD SCRIPT FOR MAIN CPU SYMBOLS TO WORK CORRECTLY:
+; "mdcomp/koscmp.exe"	"Main CPU Symbols.bin" "Main CPU Symbols.kos"
+SubCPUSymbolSupport:	equ 1
 
 ; ---------------------------------------------------------------
 ; Constants
